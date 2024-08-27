@@ -164,3 +164,183 @@ for file_name in files_to_copy_2:
     src_file_path = os.path.join(src_dir, file_name)
     dst_file_path = os.path.join(dst_dir_2, file_name)
     shutil.copy(src_file_path, dst_file_path)
+
+
+import os
+import random
+import shutil
+
+# Define paths to source directory and two destination directories
+src_dir = r'/kaggle/input/d-kap/APPLE_DISEASE_DATASET/HEALTHY LEAVES'
+dst_dir_1 = '/kaggle/working/apple-disease-dataset/datasets/train/healthy'
+dst_dir_2 = '/kaggle/working/apple-disease-dataset/datasets/test/healthy'
+
+# Create the destination directories if they don't already exist
+if not os.path.exists(dst_dir_1):
+    os.makedirs(dst_dir_1)
+if not os.path.exists(dst_dir_2):
+    os.makedirs(dst_dir_2)
+
+# Get a list of all files in the source directory
+files = os.listdir(src_dir)
+
+# Calculate the number of files to copy to each destination directory (60% and 40%)
+num_files_to_copy_1 = int(len(files) * 0.6)
+num_files_to_copy_2 = len(files) - num_files_to_copy_1
+
+# Randomly select the files to copy to each destination directory
+files_to_copy_1 = random.sample(files, num_files_to_copy_1)
+files_to_copy_2 = list(set(files) - set(files_to_copy_1))
+
+# Copy the selected files to each destination directory
+for file_name in files_to_copy_1:
+    src_file_path = os.path.join(src_dir, file_name)
+    dst_file_path = os.path.join(dst_dir_1, file_name)
+    shutil.copy(src_file_path, dst_file_path)
+
+for file_name in files_to_copy_2:
+    src_file_path = os.path.join(src_dir, file_name)
+    dst_file_path = os.path.join(dst_dir_2, file_name)
+    shutil.copy(src_file_path, dst_file_path)
+
+
+
+import os
+import random
+import shutil
+
+# Define paths to source directory and two destination directories
+src_dir = r'/kaggle/input/d-kap/APPLE_DISEASE_DATASET/LEAF BLOTCH'
+dst_dir_1 = '/kaggle/working/apple-disease-dataset/datasets/train/cedar_apple_rust'
+dst_dir_2 = '/kaggle/working/apple-disease-dataset/datasets/test/cedar_apple_rust'
+
+# Create the destination directories if they don't already exist
+if not os.path.exists(dst_dir_1):
+    os.makedirs(dst_dir_1)
+if not os.path.exists(dst_dir_2):
+    os.makedirs(dst_dir_2)
+
+# Get a list of all files in the source directory
+files = os.listdir(src_dir)
+
+# Calculate the number of files to copy to each destination directory (60% and 40%)
+num_files_to_copy_1 = int(len(files) * 0.6)
+num_files_to_copy_2 = len(files) - num_files_to_copy_1
+
+# Randomly select the files to copy to each destination directory
+files_to_copy_1 = random.sample(files, num_files_to_copy_1)
+files_to_copy_2 = list(set(files) - set(files_to_copy_1))
+
+# Copy the selected files to each destination directory
+for file_name in files_to_copy_1:
+    src_file_path = os.path.join(src_dir, file_name)
+    dst_file_path = os.path.join(dst_dir_1, file_name)
+    shutil.copy(src_file_path, dst_file_path)
+
+for file_name in files_to_copy_2:
+    src_file_path = os.path.join(src_dir, file_name)
+    dst_file_path = os.path.join(dst_dir_2, file_name)
+    shutil.copy(src_file_path, dst_file_path)
+
+import os
+import random
+import shutil
+
+# Define paths to source directory and two destination directories
+src_dir = r'/kaggle/input/d-kap/APPLE_DISEASE_DATASET/SCAB LEAVES'
+dst_dir_1 = '/kaggle/working/apple-disease-dataset/datasets/train/apple_scab'
+dst_dir_2 = '/kaggle/working/apple-disease-dataset/datasets/test/apple_scab'
+
+# Create the destination directories if they don't already exist
+if not os.path.exists(dst_dir_1):
+    os.makedirs(dst_dir_1)
+if not os.path.exists(dst_dir_2):
+    os.makedirs(dst_dir_2)
+
+# Get a list of all files in the source directory
+files = os.listdir(src_dir)
+
+# Calculate the number of files to copy to each destination directory (60% and 40%)
+num_files_to_copy_1 = int(len(files) * 0.6)
+num_files_to_copy_2 = len(files) - num_files_to_copy_1
+
+# Randomly select the files to copy to each destination directory
+files_to_copy_1 = random.sample(files, num_files_to_copy_1)
+files_to_copy_2 = list(set(files) - set(files_to_copy_1))
+
+# Copy the selected files to each destination directory
+for file_name in files_to_copy_1:
+    src_file_path = os.path.join(src_dir, file_name)
+    dst_file_path = os.path.join(dst_dir_1, file_name)
+    shutil.copy(src_file_path, dst_file_path)
+
+for file_name in files_to_copy_2:
+    src_file_path = os.path.join(src_dir, file_name)
+    dst_file_path = os.path.join(dst_dir_2, file_name)
+    shutil.copy(src_file_path, dst_file_path)
+
+!pip install keras-tuner
+!pip install tensorflow==2.9
+from tensorflow.keras.applications import EfficientNetB4
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.models import Sequential
+from tensorflow.keras import regularizers
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.optimizers import Adam
+from kerastuner.tuners import RandomSearch
+
+def build_model(hp):
+    base_model = EfficientNetB4(
+        include_top=False,
+        weights="imagenet",
+        input_shape=(224, 224, 3),
+        pooling="avg",
+    )
+
+    for layer in base_model.layers:
+        layer.trainable = False
+
+    model = Sequential([base_model])
+
+    model.add(Dense(hp.Int(f"dense_units_1", 128, 512, 64), activation="relu", kernel_regularizer=regularizers.l2(0.001)))
+    model.add(Dropout(hp.Float(f"dropout_1", 0.2, 0.5, 0.1)))
+
+    model.add(Dense(hp.Int(f"dense_units_2", 64, 256, 32), activation="relu", kernel_regularizer=regularizers.l2(0.001)))
+    model.add(Dropout(hp.Float(f"dropout_2", 0.2, 0.5, 0.1)))
+
+    model.add(Dense(hp.Int(f"dense_units_3", 32, 128, 16), activation="relu", kernel_regularizer=regularizers.l2(0.001)))
+    model.add(Dropout(hp.Float(f"dropout_3", 0.2, 0.5, 0.1)))
+
+    model.add(Dense(4, activation="softmax"))
+
+    opt = Adam(learning_rate=hp.Float("learning_rate", 1e-4, 1e-2, sampling="log"))
+
+    model.compile(
+        optimizer=opt,
+        loss="categorical_crossentropy",
+        metrics=["accuracy"],
+    )
+
+    return model
+
+# Define image data generator for data augmentation
+datagen = ImageDataGenerator(
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest')
+
+# Load the dataset
+train_data = datagen.flow_from_directory('/kaggle/working/apple-disease-dataset/datasets/train', target_size=(224,224), batch_size=32, class_mode='categorical')
+val_data = datagen.flow_from_directory('/kaggle/working/apple-disease-dataset/datasets/test', target_size=(224,224), batch_size=32, class_mode='categorical')
+
+# Perform hyperparameter tuning
+tuner = RandomSearch(
+    build_model,
+    objective='val_accuracy',
+    max_trials=10,
+    directory='/kaggle/working/',
+    project_name='apple_leaves')
