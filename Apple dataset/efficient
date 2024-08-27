@@ -1,0 +1,166 @@
+
+# IMPORTANT: RUN THIS CELL IN ORDER TO IMPORT YOUR KAGGLE DATA SOURCES
+# TO THE CORRECT LOCATION (/kaggle/input) IN YOUR NOTEBOOK,
+# THEN FEEL FREE TO DELETE THIS CELL.
+# NOTE: THIS NOTEBOOK ENVIRONMENT DIFFERS FROM KAGGLE'S PYTHON
+# ENVIRONMENT SO THERE MAY BE MISSING LIBRARIES USED BY YOUR
+# NOTEBOOK.
+
+import os
+import sys
+from tempfile import NamedTemporaryFile
+from urllib.request import urlopen
+from urllib.parse import unquote, urlparse
+from urllib.error import HTTPError
+from zipfile import ZipFile
+import tarfile
+import shutil
+
+CHUNK_SIZE = 40960
+DATA_SOURCE_MAPPING = 'apple-disease-dataset:https%3A%2F%2Fstorage.googleapis.com%2Fkaggle-data-sets%2F2068739%2F3433042%2Fbundle%2Farchive.zip%3FX-Goog-Algorithm%3DGOOG4-RSA-SHA256%26X-Goog-Credential%3Dgcp-kaggle-com%2540kaggle-161607.iam.gserviceaccount.com%252F20240520%252Fauto%252Fstorage%252Fgoog4_request%26X-Goog-Date%3D20240520T053250Z%26X-Goog-Expires%3D259200%26X-Goog-SignedHeaders%3Dhost%26X-Goog-Signature%3D97a31eb280428300afa43107ae5474abb823e3adf6bc785577df1cc9fcc02e904f3fac3119cd258eb288383008afd0b859377981ea86573f3a1f20d4646f7dd91d5e7c7d7c73d26b5c186440eb9ea7a54bfc7e2a6ff9c20a824e9b18af9cfd567888ce256420c224f33c37e3258c6abad557be87e4193fb69ac9f1cfd22114fec5431b40710044be521c488bcf19e54e792aefefca62989c301405801e5579766f75237ef8edc7f98fd2e6f8f151c4d436d0d307cf17bb81f54c59fdd8e049761a30a8c15e0fa98d6a59339486e5223552ca47b89d34f82e27e84d68852d84da5a6c7822b6e97b1079a207bb7a40b1aeb10001a2193d24344379ee9eeeebb9a5,d-kap:https%3A%2F%2Fstorage.googleapis.com%2Fkaggle-data-sets%2F2464177%2F4176149%2Fbundle%2Farchive.zip%3FX-Goog-Algorithm%3DGOOG4-RSA-SHA256%26X-Goog-Credential%3Dgcp-kaggle-com%2540kaggle-161607.iam.gserviceaccount.com%252F20240520%252Fauto%252Fstorage%252Fgoog4_request%26X-Goog-Date%3D20240520T053250Z%26X-Goog-Expires%3D259200%26X-Goog-SignedHeaders%3Dhost%26X-Goog-Signature%3D4794d7ab24dfc6269fd66e3e2aee238233ec75e06088b76f08b14c5c42f3d82ae473e060716f36d633467990ce2b12effa2ecb62a81edb7e871b358528ebfddb77b25809a915b024120b8e79d74e34204ef69f93e5321e6cccdefb0cca1c2d139e819675aa88e8e0a141f39f10aafbffe950e56d04a5ad5a60c2b9276662a22432f28c3b6da2c817f70edf8589db5227005d892d32c7ccae05522ad7ed274b785cf1997b3dcb864e0bc892a2e6df074c54e5e6c591ee9556aa19b0af5102ddeba9de638aba96bccb3a4b58c8e311a10bbb88c1a3ec4052820351dfb89af06fa913c1b928188b6fb7f13bdedac407e1b0fad8e65b199a0f4050c7df81a2939d80,tuner-model:https%3A%2F%2Fstorage.googleapis.com%2Fkaggle-data-sets%2F3180412%2F5514664%2Fbundle%2Farchive.zip%3FX-Goog-Algorithm%3DGOOG4-RSA-SHA256%26X-Goog-Credential%3Dgcp-kaggle-com%2540kaggle-161607.iam.gserviceaccount.com%252F20240520%252Fauto%252Fstorage%252Fgoog4_request%26X-Goog-Date%3D20240520T053250Z%26X-Goog-Expires%3D259200%26X-Goog-SignedHeaders%3Dhost%26X-Goog-Signature%3D07844259d9bf48eaf9f0ec42df6bd212bad7fe92867b5be1c389c92d91cfc0262b360eb34b4189be56bf39c52aec75976c5e6e1dfabda7aad22fee04e9ecbb1b8e16cc078e635e304917f30038d51c552e1ac3e9ef5424e8c3f5dd6da90a381aeda5eab901d6e4977bda134e8bfb59443a2b29adcbfb78271e78b84a2838f545199d45e7a98ef24186dd5748cb8679ea0f926b1e6a196c9cf317d24e6156e07fe5bc97647a57be9f21fe6dfa7f8648cdd45944ae4bc8a57797b916039f376f130fa3fb516e94c1ce3f9afdf5f52b2adbd2a332e4b6bb8cdec0bc846304856b75d4dcebbb1dd5020cb1e770bef1d983e0756fc9b2852257f39608923d84ab3fbc'
+
+KAGGLE_INPUT_PATH='/kaggle/input'
+KAGGLE_WORKING_PATH='/kaggle/working'
+KAGGLE_SYMLINK='kaggle'
+
+!umount /kaggle/input/ 2> /dev/null
+shutil.rmtree('/kaggle/input', ignore_errors=True)
+os.makedirs(KAGGLE_INPUT_PATH, 0o777, exist_ok=True)
+os.makedirs(KAGGLE_WORKING_PATH, 0o777, exist_ok=True)
+
+try:
+  os.symlink(KAGGLE_INPUT_PATH, os.path.join("..", 'input'), target_is_directory=True)
+except FileExistsError:
+  pass
+try:
+  os.symlink(KAGGLE_WORKING_PATH, os.path.join("..", 'working'), target_is_directory=True)
+except FileExistsError:
+  pass
+
+for data_source_mapping in DATA_SOURCE_MAPPING.split(','):
+    directory, download_url_encoded = data_source_mapping.split(':')
+    download_url = unquote(download_url_encoded)
+    filename = urlparse(download_url).path
+    destination_path = os.path.join(KAGGLE_INPUT_PATH, directory)
+    try:
+        with urlopen(download_url) as fileres, NamedTemporaryFile() as tfile:
+            total_length = fileres.headers['content-length']
+            print(f'Downloading {directory}, {total_length} bytes compressed')
+            dl = 0
+            data = fileres.read(CHUNK_SIZE)
+            while len(data) > 0:
+                dl += len(data)
+                tfile.write(data)
+                done = int(50 * dl / int(total_length))
+                sys.stdout.write(f"\r[{'=' * done}{' ' * (50-done)}] {dl} bytes downloaded")
+                sys.stdout.flush()
+                data = fileres.read(CHUNK_SIZE)
+            if filename.endswith('.zip'):
+              with ZipFile(tfile) as zfile:
+                zfile.extractall(destination_path)
+            else:
+              with tarfile.open(tfile.name) as tarfile:
+                tarfile.extractall(destination_path)
+            print(f'\nDownloaded and uncompressed: {directory}')
+    except HTTPError as e:
+        print(f'Failed to load (likely expired) {download_url} to path {destination_path}')
+        continue
+    except OSError as e:
+        print(f'Failed to load {download_url} to path {destination_path}')
+        continue
+
+print('Data source import complete.')
+
+
+
+ This Python 3 environment comes with many helpful analytics libraries installed
+# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
+# For example, here's several helpful packages to load
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+
+# Input data files are available in the read-only "../input/" directory
+# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
+
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+
+# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using "Save & Run All"
+# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session
+
+
+
+import shutil
+import os
+
+# Set the source directory
+src_dir = "/kaggle/input/apple-disease-dataset/datasets/train"
+
+# Set the destination directory
+dst_dir = "/kaggle/working/apple-disease-dataset/datasets/train"
+
+# Remove the destination directory if it already exists
+if os.path.exists(dst_dir):
+    shutil.rmtree(dst_dir)
+
+# Copy the contents of the source directory to the destination directory
+shutil.copytree(src_dir, dst_dir)
+
+
+import shutil
+import os
+
+# Set the source directory
+src_dir = "/kaggle/input/apple-disease-dataset/datasets/test"
+
+# Set the destination directory
+dst_dir = "/kaggle/working/apple-disease-dataset/datasets/test"
+
+# Remove the destination directory if it already exists
+if os.path.exists(dst_dir):
+    shutil.rmtree(dst_dir)
+
+# Copy the contents of the source directory to the destination directory
+shutil.copytree(src_dir, dst_dir)
+
+
+
+import os
+import random
+import shutil
+
+# Define paths to source directory and two destination directories
+src_dir = r'/kaggle/input/d-kap/APPLE_DISEASE_DATASET/APPLE ROT LEAVES'
+dst_dir_1 = '/kaggle/working/apple-disease-dataset/datasets/train/black_rot'
+dst_dir_2 = '/kaggle/working/apple-disease-dataset/datasets/test/black_rot'
+
+# Create the destination directories if they don't already exist
+if not os.path.exists(dst_dir_1):
+    os.makedirs(dst_dir_1)
+if not os.path.exists(dst_dir_2):
+    os.makedirs(dst_dir_2)
+
+# Get a list of all files in the source directory
+files = os.listdir(src_dir)
+
+# Calculate the number of files to copy to each destination directory (60% and 40%)
+num_files_to_copy_1 = int(len(files) * 0.6)
+num_files_to_copy_2 = len(files) - num_files_to_copy_1
+
+# Randomly select the files to copy to each destination directory
+files_to_copy_1 = random.sample(files, num_files_to_copy_1)
+files_to_copy_2 = list(set(files) - set(files_to_copy_1))
+
+# Copy the selected files to each destination directory
+for file_name in files_to_copy_1:
+    src_file_path = os.path.join(src_dir, file_name)
+    dst_file_path = os.path.join(dst_dir_1, file_name)
+    shutil.copy(src_file_path, dst_file_path)
+
+for file_name in files_to_copy_2:
+    src_file_path = os.path.join(src_dir, file_name)
+    dst_file_path = os.path.join(dst_dir_2, file_name)
+    shutil.copy(src_file_path, dst_file_path)
